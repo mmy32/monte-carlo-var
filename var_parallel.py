@@ -1,26 +1,48 @@
 import numpy as np
 import pandas as pd
 import time
-import matplotlib.pyplot as plt
 from concurrent.futures import ProcessPoolExecutor
-import multiprocessing as mp
 import os
-
+import multiprocessing as mp
+from arch import arch_model
 
 NUM_SIMULATIONS = 10_000
 INITIAL_PORTFOLIO = 1_000_000
 
 
-# --- Worker function ---
-def simulate_batch(n_sims, returns, initial_portfolio, seed):
-    rng = np.random.default_rng(seed)
-    sampled_returns = rng.choice(returns, size=n_sims)
-    pnl = initial_portfolio * sampled_returns
+def load_returns():
+    returns = pd.read_csv("data/aapl_returns.csv")["Log Return"].values
+    return returns * 100  # arch expects % returns
+
+
+# --- Fit model ONCE ---
+def fit_garch_model(returns):
+    model = arch_model(
+        returns,
+        vol="Garch",
+        p=1,
+        q=1,
+        dist="t"
+    )
+    res = model.fit(disp="off")
+    return res
+
+
+# --- Worker: simulate from fitted model ---
+def simulate_batch(n_sims, model_params, seed):
+    np.random.seed(seed)
+
+    # Recreate model with same params (lightweight vs refitting)
+    am = arch_model(None, vol="Garch", p=1, q=1, dist="t")
+    sim_data = am.simulate(model_params, n_sims)
+
+    simulated_returns = sim_data["data"].values / 100
+    pnl = INITIAL_PORTFOLIO * simulated_returns
+
     return pnl
 
 
-# --- Parallel execution ---
-def run_parallel_simulation(num_simulations, returns, initial_portfolio):
+def run_parallel_simulation(num_simulations, model_params):
     num_workers = os.cpu_count() or 4
     batch_size = num_simulations // num_workers
 
@@ -39,8 +61,7 @@ def run_parallel_simulation(num_simulations, returns, initial_portfolio):
                 executor.submit(
                     simulate_batch,
                     n_sims,
-                    returns,
-                    initial_portfolio,
+                    model_params,
                     i
                 )
             )
@@ -51,63 +72,60 @@ def run_parallel_simulation(num_simulations, returns, initial_portfolio):
     return np.concatenate(results)
 
 
-# --- Risk metrics ---
 def compute_var_es(pnl, alpha):
-    """
-    alpha = 0.95 -> 95% VaR / ES
-    """
     var_threshold = np.percentile(pnl, (1 - alpha) * 100)
-
-    # Tail losses (<= VaR threshold)
     tail_losses = pnl[pnl <= var_threshold]
-
-    es = tail_losses.mean() if len(tail_losses) > 0 else var_threshold
+    es = tail_losses.mean()
 
     return var_threshold, es
 
 
-def main():
-    returns = pd.read_csv("data/aapl_returns.csv")["Log Return"].values
+# ✅ Flask entry point
+def run_var_simulation():
+    returns = load_returns()
+
+    # Fit once
+    res = fit_garch_model(returns)
+
+    # Extract parameters (important!)
+    model_params = res.params
+
+    pnl = run_parallel_simulation(
+        NUM_SIMULATIONS,
+        model_params
+    )
+
+    return pnl
+
+
+def measure_runtime():
+    returns = load_returns()
 
     start = time.perf_counter()
 
-    simulated_pnl = run_parallel_simulation(
+    res = fit_garch_model(returns)
+    model_params = res.params
+
+    run_parallel_simulation(
         NUM_SIMULATIONS,
-        returns,
-        INITIAL_PORTFOLIO
+        model_params
     )
 
-    # --- VaR & ES ---
-    var_95, es_95 = compute_var_es(simulated_pnl, 0.95)
-    var_99, es_99 = compute_var_es(simulated_pnl, 0.99)
-
     end = time.perf_counter()
-    runtime = end - start
+
+    return end - start
+
+
+# Optional CLI
+if __name__ == "__main__":
+    mp.set_start_method("spawn", force=True)
+
+    pnl = run_var_simulation()
+
+    var_95, es_95 = compute_var_es(pnl, 0.95)
+    var_99, es_99 = compute_var_es(pnl, 0.99)
 
     print(f"95% VaR: ${var_95:,.2f}")
     print(f"95% ES : ${es_95:,.2f}")
     print(f"99% VaR: ${var_99:,.2f}")
     print(f"99% ES : ${es_99:,.2f}")
-    print(f"Runtime: {runtime:.4f} seconds")
-
-    # --- Plot ---
-    plt.hist(simulated_pnl, bins=50)
-
-    plt.axvline(var_95, color='orange', linestyle='--', label='95% VaR')
-    plt.axvline(es_95, color='orange', linestyle='-', label='95% ES')
-
-    plt.axvline(var_99, color='red', linestyle='--', label='99% VaR')
-    plt.axvline(es_99, color='red', linestyle='-', label='99% ES')
-
-    plt.title("Monte Carlo VaR & ES Simulation")
-    plt.xlabel("Profit / Loss")
-    plt.ylabel("Frequency")
-    plt.legend()
-
-    plt.savefig("histogram.png")
-    plt.close()
-
-
-if __name__ == "__main__":
-    mp.set_start_method("spawn", force=True)
-    main()
