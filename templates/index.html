@@ -1,22 +1,130 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
     <title>VaR Dashboard</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 40px;
+            background-color: #f7f9fc;
+            color: #333;
+        }
+
+        h1 {
+            margin-bottom: 10px;
+        }
+
+        .section {
+            margin-top: 40px;
+        }
+
+        .card-container {
+            display: flex;
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            flex: 1;
+        }
+
+        .card h3 {
+            margin: 0;
+            font-size: 16px;
+            color: #666;
+        }
+
+        .card p {
+            font-size: 20px;
+            margin-top: 10px;
+            font-weight: bold;
+        }
+
+        .chart-container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+
+        .description {
+            color: #555;
+            max-width: 800px;
+            line-height: 1.5;
+        }
+    </style>
 </head>
+
 <body>
 
-<h1>VaR Dashboard</h1>
+<h1>📊 Value at Risk (VaR) Dashboard</h1>
 
-<h2>VaR Summary</h2>
-<p id="var"></p>
-<p id="es"></p>
+<p class="description">
+This dashboard estimates potential losses using Monte Carlo simulation. 
+VaR (Value at Risk) shows the maximum expected loss over a given time horizon at a specific confidence level, 
+while Expected Shortfall (ES) measures the average loss in extreme scenarios beyond the VaR threshold.
+</p>
 
-<h2>Histogram</h2>
-<canvas id="histChart"></canvas>
+<!-- Summary Section -->
+<div class="section">
+    <h2>Risk Summary</h2>
+    <p class="description">
+        These metrics summarize downside risk. Lower (more negative) values indicate higher potential losses.
+    </p>
 
-<h2>Performance</h2>
-<canvas id="perfChart"></canvas>
+    <div class="card-container">
+        <div class="card">
+            <h3>VaR 95%</h3>
+            <p id="var95"></p>
+        </div>
+        <div class="card">
+            <h3>VaR 99%</h3>
+            <p id="var99"></p>
+        </div>
+        <div class="card">
+            <h3>ES 95%</h3>
+            <p id="es95"></p>
+        </div>
+        <div class="card">
+            <h3>ES 99%</h3>
+            <p id="es99"></p>
+        </div>
+    </div>
+</div>
+
+<!-- Histogram Section -->
+<div class="section">
+    <h2>PnL Distribution</h2>
+    <p class="description">
+        This histogram shows the distribution of simulated profit and loss outcomes. 
+        The left tail represents extreme losses — where VaR and ES are focused.
+    </p>
+
+    <div class="chart-container">
+        <canvas id="histChart"></canvas>
+    </div>
+</div>
+
+<!-- Performance Section -->
+<div class="section">
+    <h2>Simulated Portfolio Paths</h2>
+    <p class="description">
+        These lines represent simulated future portfolio values over time. 
+        They illustrate the range of possible outcomes, including worst-case scenarios.
+    </p>
+
+    <div class="chart-container">
+        <canvas id="perfChart"></canvas>
+    </div>
+</div>
 
 <script src="/static/app.js"></script>
 
