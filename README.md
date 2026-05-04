@@ -12,7 +12,16 @@ This project implements a Monte Carlo simulation to estimate Value at Risk (VaR)
 - `sequential` branch: baseline implementation
 - `parallel` branch: multiprocessing version (coming later)
 
+## Demo
+
+### Web App Preview
+![VaR Dashboard](docs/demo.png)
+
+### Example Output
+
 ## Setup
 ```bash
 pip install -r requirements.txt
 python src/data_loader.py
+
+
