@@ -15,7 +15,8 @@ This project implements a Monte Carlo simulation to estimate Value at Risk (VaR)
 ## Demo
 
 ### Web App Preview
-![VaR Dashboard](docs/demo.png)
+![VaR Dashboard](docs/demo1.png)
+![VaR Historgram](docs/demo2.png)
 
 ### Example Output
 
