@@ -20,6 +20,10 @@ This project implements a Monte Carlo simulation to estimate Value at Risk (VaR)
 
 ### Example Output
 
+## Status
+- All automated tests passed (unit + integration)
+- Verified correctness of Monte Carlo VaR implementation
+
 ## Setup
 ```bash
 pip install -r requirements.txt
